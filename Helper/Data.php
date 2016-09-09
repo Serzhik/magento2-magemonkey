@@ -28,25 +28,29 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
     protected $_mlogger;
     protected $_groupRegistry;
     protected $_scopeConfig;
+    protected $_request;
+    protected $_currentScope;
 
     /**
      * @param \Magento\Framework\App\Helper\Context $context
      * @param \Magento\Store\Model\StoreManagerInterface $storeManager
      * @param \Ebizmarts\MageMonkey\Model\Logger\Logger $logger
      * @param \Magento\Customer\Model\GroupRegistry $groupRegistry
-     * @param \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
+     * @param \Magento\Framework\App\RequestInterface $request
      */
     public function __construct(
         \Magento\Framework\App\Helper\Context $context,
         \Magento\Store\Model\StoreManagerInterface $storeManager,
         \Ebizmarts\MageMonkey\Model\Logger\Logger $logger,
-        \Magento\Customer\Model\GroupRegistry $groupRegistry
+        \Magento\Customer\Model\GroupRegistry $groupRegistry,
+        \Magento\Framework\App\RequestInterface $request
     ) {
     
         $this->_storeManager                = $storeManager;
         $this->_mlogger                     = $logger;
         $this->_groupRegistry               = $groupRegistry;
         $this->_scopeConfig                 = $context->getScopeConfig();
+        $this->_request                     = $request;
         parent::__construct($context);
     }
 
@@ -62,6 +66,36 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
     {
         return $this->scopeConfig->getValue(self::XML_PATH_APIKEY, \Magento\Store\Model\ScopeInterface::SCOPE_STORE, $store);
     }
+    
+     /**
+     * @return \Magento\Store\Api\Data\StoreInterface
+     */
+    public function getCurrentScope()
+    {
+        if (!isset($this->_currentScope)) {
+            $storeId = $this->_request->getParam(\Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+            $websiteId = $this->_request->getParam(\Magento\Store\Model\ScopeInterface::SCOPE_WEBSITE);
+            if (!empty($storeId)) {
+                $this->_currentScope = $this->_storeManager->getStore($storeId);
+            } elseif (!empty($websiteId)) {
+                $stores = $this->_storeManager->getWebsite($websiteId)->getStores();
+                if (is_array($stores) && count($stores)) {
+                    $this->_currentScope = current($stores);
+                }
+            }
+        }
+        return $this->_currentScope;
+    }
+
+    /**
+     * @return int|null
+     */
+    public function getCurrentScopeId()
+    {
+        $scope = $this->getCurrentScope();
+        return (!empty($scope) ? $scope->getId() : null);
+    }
+    
     public function getDefaultList($store = null)
     {
         return $this->_scopeConfig->getValue(self::XML_PATH_LIST, \Magento\Store\Model\ScopeInterface::SCOPE_STORE, $store);
