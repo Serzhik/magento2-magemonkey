@@ -29,13 +29,17 @@ class Subscriber
      * @var \Magento\Store\Model\StoreManagerInterface
      */
     protected $_storeManager;
+    
+    /**
+     * @var \Ebizmarts\MageMonkey\Model\Api
+     */
+    protected $_api;
+
     /**
      * @param \Ebizmarts\MageMonkey\Helper\Data $helper
      * @param \Magento\Customer\Model\Customer $customer
      * @param \Magento\Customer\Model\Session $customerSession
      */
-    protected $_api = null;
-
     public function __construct(
         \Ebizmarts\MageMonkey\Helper\Data $helper,
         \Magento\Customer\Model\Customer $customer,
@@ -109,27 +113,22 @@ class Subscriber
     
         $storeId = $this->_storeManager->getStore()->getId();
 
-        $isSubscribeOwnEmail = $this->_customerSession->isLoggedIn()
-            && $this->_customerSession->getCustomerDataObject()->getEmail() == $email;
-
-        if (!$isSubscribeOwnEmail) {
-            if ($this->_helper->isMonkeyEnabled($storeId)) {
-                $api = $this->_api;
-                if ($this->_helper->isDoubleOptInEnabled($storeId)) {
-                    $status = 'pending';
-                } else {
-                    $status = 'subscribed';
+        if ($this->_helper->isMonkeyEnabled($storeId)) {
+            $api = $this->_api;
+            if ($this->_helper->isDoubleOptInEnabled($storeId)) {
+                $status = 'pending';
+            } else {
+                $status = 'subscribed';
+            }
+                $data = ['list_id' => $this->_helper->getDefaultList($storeId), 'email_address' => $email, 'email_type' => 'html', 'status' => $status];
+            try {
+                $return = $api->listCreateMember($this->_helper->getDefaultList($storeId), json_encode($data));
+                if (isset($return->id)) {
+                    $subscriber->setMagemonkeyId($return->id);
                 }
-                    $data = ['list_id' => $this->_helper->getDefaultList(), 'email_address' => $email, 'email_type' => 'html', 'status' => $status];
-                try {
-                    $return = $api->listCreateMember($this->_helper->getDefaultList(), json_encode($data));
-                    if (isset($return->id)) {
-                        $subscriber->setMagemonkeyId($return->id);
-                    }
-                } catch (\Exception $e) {
-                    if (stripos($e->getMessage(), ' Status: 400 ') === false) {
-                        throw new \Exception($e->getMessage());
-                    }
+            } catch (\Exception $e) {
+                if (stripos($e->getMessage(), ' Status: 400 ') === false) {
+                    throw new \Exception($e->getMessage());
                 }
             }
         }
