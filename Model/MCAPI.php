@@ -26,6 +26,14 @@ class MCAPI
      * @var \Magento\Framework\HTTP\Adapter\Curl|null
      */
     protected $_curl = null;
+    /**
+     * @var \Magento\Store\Model\StoreManagerInterface|null
+     */
+    protected $_storeManager = null;
+    /**
+     * @var \Magento\Framework\App\RequestInterface|null
+     */
+    protected $_request = null;
 
     /**
      * MCAPI constructor.
@@ -39,7 +47,7 @@ class MCAPI
     
         $this->_helper = $helper;
         $this->_curl = $curl;
-        $this->_apiKey = $helper->getApiKey();
+        $this->_apiKey = $helper->getApiKey($helper->getCurrentScopeId());
         $this->_secure = false;
     }
     public function getApiKey()
